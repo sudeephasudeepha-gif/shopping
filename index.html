@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ShopEasy - Online Shopping</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7fb;--card:#fff;--text:#1d2433;--muted:#667085;--brand:#4f46e5;--brand-d:#4338ca;--line:#e4e7ee;--ok:#12805c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12141c;--card:#1b1e29;--text:#eef0f6;--muted:#9aa3b5;--brand:#818cf8;--brand-d:#6366f1;--line:#2c3040;--ok:#4ade80}}
+:root[data-theme="dark"]{--bg:#12141c;--card:#1b1e29;--text:#eef0f6;--muted:#9aa3b5;--brand:#818cf8;--brand-d:#6366f1;--line:#2c3040;--ok:#4ade80}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--card);border-bottom:1px solid var(--line);z-index:5}
+.bar{max-width:1050px;margin:auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{font-weight:800;font-size:1.3rem;color:var(--brand);text-decoration:none}
+nav{display:flex;gap:6px}
+nav a{padding:8px 14px;border-radius:8px;color:var(--text);text-decoration:none;font-weight:600}
+nav a.on,nav a:hover{background:var(--brand);color:#fff}
+.badge{background:#ef4444;color:#fff;border-radius:99px;padding:1px 7px;font-size:.75rem;margin-left:4px}
+main{max-width:1050px;margin:auto;padding:20px 16px 40px}
+h1{margin:0 0 16px;font-size:1.6rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.1)}
+.pic{font-size:3.5rem;text-align:center;background:var(--bg);border-radius:10px;padding:14px}
+.cat{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
+.price{font-weight:800;font-size:1.15rem}
+button,.btn{background:var(--brand);color:#fff;border:0;border-radius:9px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:.95rem;text-decoration:none;display:inline-block;text-align:center}
+button:hover,.btn:hover{background:var(--brand-d)}
+.ghost{background:transparent;color:var(--muted);padding:6px 10px}
+.ghost:hover{background:var(--line)}
+.card button{margin-top:auto}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}
+.row .e{font-size:2rem}
+.row .info{flex:1;min-width:0}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{padding:4px 11px}
+.total{display:flex;justify-content:space-between;font-size:1.2rem;font-weight:800;padding-top:12px;border-top:2px solid var(--line);margin-top:6px}
+.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;flex-wrap:wrap}
+.two{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+@media(max-width:720px){.two{grid-template-columns:1fr}}
+label{display:block;font-weight:600;margin:10px 0 4px;font-size:.9rem}
+input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:1rem}
+.err{color:#ef4444;font-size:.8rem;min-height:1em}
+.empty,.done{text-align:center;padding:40px 10px;color:var(--muted)}
+.done h2{color:var(--ok)}
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header><div class="bar">
+<a class="logo" href="#/">🛍️ ShopEasy</a>
+<nav><a href="#/" data-r="home">Products</a><a href="#/cart" data-r="cart">Cart<span class="badge" id="cnt">0</span></a><a href="#/checkout" data-r="checkout">Checkout</a></nav>
+</div></header>
+<main id="app"></main>
+<div class="toast" id="toast"></div>
+
+<script>
+// Step 2: product data is loaded from the backend (GET /api/products)
+let PRODUCTS=[];
+let cart={};
+try{cart=JSON.parse(localStorage.getItem("cart")||"{}")}catch(e){cart={}}
+const $=s=>document.querySelector(s);
+const money=n=>"₹"+n.toLocaleString("en-IN");
+const find=id=>PRODUCTS.find(p=>p.id==id);
+const save=()=>{try{localStorage.setItem("cart",JSON.stringify(cart))}catch(e){}$("#cnt").textContent=Object.values(cart).reduce((a,b)=>a+b,0)};
+const total=()=>Object.keys(cart).reduce((s,id)=>s+find(id).price*cart[id],0);
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),1400)}
+
+// Step 3: add to cart
+function add(id){cart[id]=(cart[id]||0)+1;save();toast(find(id).name+" added to cart")}
+function change(id,d){cart[id]+=d;if(cart[id]<=0)delete cart[id];save();render()}
+function remove(id){delete cart[id];save();render()}
+
+// Step 1: product listing page
+function home(){
+return `<h1>Our Products</h1><div class="grid">`+PRODUCTS.map(p=>`
+<div class="card"><div class="pic">${p.e}</div><span class="cat">${p.cat}</span><strong>${p.name}</strong>
+<span class="price">${money(p.price)}</span><button onclick="add(${p.id})">Add to Cart</button></div>`).join("")+`</div>`}
+
+// Steps 4 and 5: cart page with total
+function cartPage(){
+const ids=Object.keys(cart);
+if(!ids.length)return `<h1>Your Cart</h1><div class="panel empty"><p>Your cart is empty.</p><a class="btn" href="#/">Browse Products</a></div>`;
+return `<h1>Your Cart</h1><div class="panel">`+ids.map(id=>{const p=find(id);return `
+<div class="row"><span class="e">${p.e}</span><div class="info"><strong>${p.name}</strong><div class="cat">${money(p.price)} each</div></div>
+<div class="qty"><button onclick="change(${id},-1)">−</button><span>${cart[id]}</span><button onclick="change(${id},1)">+</button></div>
+<strong style="min-width:80px;text-align:right">${money(p.price*cart[id])}</strong>
+<button class="ghost" onclick="remove(${id})" title="Remove">✕</button></div>`}).join("")+
+`<div class="total"><span>Total</span><span>${money(total())}</span></div></div>
+<div class="actions"><a class="btn ghost" href="#/">Continue Shopping</a><a class="btn" href="#/checkout">Proceed to Checkout</a></div>`}
+
+// Step 6: checkout page
+function checkout(){
+if(!Object.keys(cart).length)return cartPage();
+const items=Object.keys(cart).map(id=>{const p=find(id);return `<div class="row"><span class="e">${p.e}</span><div class="info">${p.name} × ${cart[id]}</div><strong>${money(p.price*cart[id])}</strong></div>`}).join("");
+return `<h1>Checkout</h1><div class="two">
+<div class="panel"><h3 style="margin-top:0">Shipping Details</h3>
+<label>Full Name</label><input id="name" placeholder="Your name"><div class="err" id="e-name"></div>
+<label>Email</label><input id="email" type="email" placeholder="you@example.com"><div class="err" id="e-email"></div>
+<label>Phone</label><input id="phone" placeholder="10-digit number"><div class="err" id="e-phone"></div>
+<label>Address</label><input id="addr" placeholder="Street, city, PIN"><div class="err" id="e-addr"></div>
+<label>Payment Method</label><select id="pay"><option>Cash on Delivery</option><option>UPI</option><option>Credit / Debit Card</option></select>
+<div class="actions"><button onclick="placeOrder()">Place Order</button></div></div>
+<div class="panel"><h3 style="margin-top:0">Order Summary</h3>${items}<div class="total"><span>Total</span><span>${money(total())}</span></div></div></div>`}
+
+async function placeOrder(){
+const v=id=>$("#"+id).value.trim();
+const rules={name:v("name").length>=2,email:/^\S+@\S+\.\S+$/.test(v("email")),phone:/^\d{10}$/.test(v("phone")),addr:v("addr").length>=5};
+const msg={name:"Enter your name",email:"Enter a valid email",phone:"Enter a 10-digit phone number",addr:"Enter your address"};
+let ok=true;
+for(const k in rules){$("#e-"+k).textContent=rules[k]?"":msg[k];if(!rules[k])ok=false}
+if(!ok)return;
+const body={customer:{name:v("name"),email:v("email"),phone:v("phone"),address:v("addr"),payment:v("pay")},items:Object.keys(cart).map(id=>({id:+id,qty:cart[id]}))};
+let d;
+try{const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});d=await r.json();if(!r.ok)throw new Error(d.error)}catch(e){toast(e.message||"Order failed");return}
+const nm=v("name").replace(/[<>&]/g,"");cart={};save();
+$("#app").innerHTML=`<div class="panel done"><h2>✅ Order Placed!</h2><p>Thank you, ${nm}. Your order <strong>${d.orderId}</strong> of <strong>${money(d.total)}</strong> is confirmed.</p><a class="btn" href="#/">Continue Shopping</a></div>`}
+
+// Simple hash router
+function render(){
+const r=location.hash.replace("#/","")||"home";
+const route=["cart","checkout"].includes(r)?r:"home";
+$("#app").innerHTML={home,cart:cartPage,checkout}[route]();
+document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.r===route));
+window.scrollTo(0,0)}
+window.addEventListener("hashchange",render);
+fetch("/api/products").then(r=>r.json()).then(d=>{PRODUCTS=d;save();render()}).catch(()=>{$("#app").innerHTML='<div class="panel empty">Could not load products. Is the server running?</div>'});
+</script>
+</body>
+</html>

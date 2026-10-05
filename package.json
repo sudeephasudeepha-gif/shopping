@@ -1,0 +1,7 @@
+{
+  "name": "shopeasy",
+  "version": "1.0.0",
+  "description": "Basic online shopping website with Node.js backend",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" }
+}
