@@ -4,7 +4,6 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = process.env.PORT || 3000;
-const PUB = path.join(__dirname, "public");
 const ORDERS_FILE = path.join(__dirname, "orders.json");
 
 // Product data lives on the server, so prices cannot be tampered with from the browser
@@ -19,7 +18,6 @@ const PRODUCTS = [
   { id: 8, name: "Water Bottle", cat: "Lifestyle", price: 499, e: "🍶" },
 ];
 
-const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".json": "application/json" };
 
 const readOrders = () => {
   try { return JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8")); } catch { return []; }
@@ -80,11 +78,13 @@ http.createServer((req, res) => {
   if (url === "/api/orders" && req.method === "POST") return createOrder(req, res);
 
   // Static files from /public
-  const file = path.join(PUB, url === "/" ? "index.html" : url);
-  if (!file.startsWith(PUB + path.sep)) return send(res, 403, { error: "Forbidden" });
-  fs.readFile(file, (err, data) => {
-    if (err) return send(res, 404, { error: "Not found" });
-    res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream" });
-    res.end(data);
-  });
+  // Serve only index.html (keeps server.js and orders.json private)
+  if (url === "/" || url === "/index.html") {
+    return fs.readFile(path.join(__dirname, "index.html"), (err, data) => {
+      if (err) return send(res, 404, { error: "Not found" });
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(data);
+    });
+  }
+  send(res, 404, { error: "Not found" });
 }).listen(PORT, () => console.log("ShopEasy running at http://localhost:" + PORT));
